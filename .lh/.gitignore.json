@@ -1,0 +1,22 @@
+{
+    "sourceFile": ".gitignore",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1781115496410,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1781115565549,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,7 @@\n .history/ \n lh/ \n \n _do_not_track\n-chat_private/\n+# Keep private workspace notes usable locally but never tracked by Git\n+/chat_private/**\n \n"
+                }
+            ],
+            "date": 1781115496410,
+            "name": "Commit-0",
+            "content": ".history/ \nlh/ \n\n_do_not_track\nchat_private/\n\n"
+        }
+    ]
+}
