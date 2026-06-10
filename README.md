@@ -30,8 +30,9 @@ The current script is preconfigured for:
 - **Model repository:** `Qwen/Qwen2.5-Coder-14B-Instruct-GGUF`
 - **Model file:** `Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf`
 - **Server port:** `8009`
-- **Context size:** `8192`
-- **GPU layers:** `99`
+- **Safe default context size:** `4096`
+- **Safe default GPU layers:** `35`
+- **Safe default threads:** `8`
 
 ## Features
 
@@ -97,7 +98,23 @@ Start-AI-Server.bat
 This launcher starts:
 
 ```text
-llama-server.exe --model "C:\AI_Models\Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf" --port 8009 --ctx-size 8192 -ngl 99
+llama-server.exe --model "C:\AI_Models\Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf" --port %LLAMA_PORT% --ctx-size %LLAMA_CTX_SIZE% -ngl %LLAMA_GPU_LAYERS% --threads %LLAMA_THREADS%
+```
+
+The generated launcher uses conservative defaults for Windows laptops:
+
+- `LLAMA_PORT=8009`
+- `LLAMA_CTX_SIZE=4096`
+- `LLAMA_GPU_LAYERS=35`
+- `LLAMA_THREADS=8`
+
+You can override them per launch before starting the batch file, for example:
+
+```powershell
+$env:LLAMA_GPU_LAYERS = '28'
+$env:LLAMA_CTX_SIZE = '3072'
+$env:LLAMA_THREADS = '8'
+./Start-AI-Server.bat
 ```
 
 ## What the Script Does Internally
