@@ -1,5 +1,5 @@
 .history/ 
-lh/ 
+.lh/ 
 
 _do_not_track
 # Keep private workspace notes usable locally but never tracked by Git
