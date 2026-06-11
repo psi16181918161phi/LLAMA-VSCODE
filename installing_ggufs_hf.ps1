@@ -1,3 +1,9 @@
+[CmdletBinding()]
+param(
+    [switch]$ModelOnly,
+    [switch]$Small
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -29,14 +35,23 @@ class DownloadResult {
     }
 }
 
+if ($Small) {
+    $ModelRepository = 'Qwen/Qwen2.5-Coder-3B-Instruct-GGUF'
+    $ModelFileName = 'qwen2.5-coder-3b-instruct-q4_k_m.gguf'
+    $LauncherFileName = 'Start-AI-Server-3B.bat'
+} else {
+    $ModelRepository = 'Qwen/Qwen2.5-Coder-14B-Instruct-GGUF'
+    $ModelFileName = 'Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf'
+    $LauncherFileName = 'Start-AI-Server.bat'
+}
+
 $Paths = [DeploymentPaths]::new(
     'C:\llama_cpp',
     'C:\AI_Models',
-    'Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf',
-    'Start-AI-Server.bat'
+    $ModelFileName,
+    $LauncherFileName
 )
 
-$ModelRepository = 'Qwen/Qwen2.5-Coder-14B-Instruct-GGUF'
 $HuggingFaceModelApiUrl = "https://huggingface.co/api/models/$ModelRepository"
 $LlamaReleaseApiUrl = 'https://api.github.com/repos/ggml-org/llama.cpp/releases/latest'
 $LlamaWindowsCudaZipPattern = '^llama-.*-bin-win-cuda-.*-x64\.zip$'
@@ -508,7 +523,7 @@ cd /d "$WorkingDirectory"
 title Local AI Server
 if not defined LLAMA_PORT set "LLAMA_PORT=8009"
 if not defined LLAMA_CTX_SIZE set "LLAMA_CTX_SIZE=4096"
-if not defined LLAMA_GPU_LAYERS set "LLAMA_GPU_LAYERS=35"
+if not defined LLAMA_GPU_LAYERS set "LLAMA_GPU_LAYERS=28"
 if not defined LLAMA_THREADS set "LLAMA_THREADS=8"
 if not exist "llama-server.exe" (
 	echo llama-server.exe was not found in "$WorkingDirectory".
@@ -617,7 +632,8 @@ function Install-ModelFile {
         [string]$DownloadUrl
     )
 
-    Write-Info 'Downloading Qwen 2.5 Coder 14B GGUF directly from Hugging Face...'
+    $modelLabel = if ($Small) { 'Qwen 2.5 Coder 3B (small)' } else { 'Qwen 2.5 Coder 14B' }
+    Write-Info "Downloading $modelLabel GGUF directly from Hugging Face..."
 
     $modelTotalBytes = Get-RemoteFileSizeBytes -Uri $DownloadUrl
     $timerJob = Start-DownloadProgressJob -OutFile $Paths.ModelPath -TotalBytes $modelTotalBytes
@@ -644,7 +660,17 @@ function Main {
     [CmdletBinding()]
     param()
 
-    Initialize-Deployment; $downloadUrls = Get-DeploymentDownloadUrls; Install-LlamaCppBinaries -DownloadUrl $downloadUrls.Llama; Install-ModelFile -DownloadUrl $downloadUrls.Model; New-DeploymentLauncher; Write-Success 'SUCCESS! Your local AI environment is fully deployed.'; Write-Success "Desktop launcher created at: $($Paths.LauncherPath)"
+    Initialize-Deployment
+    $downloadUrls = Get-DeploymentDownloadUrls
+    if (-not $ModelOnly) {
+        Install-LlamaCppBinaries -DownloadUrl $downloadUrls.Llama
+    } else {
+        Write-Info 'Skipping llama.cpp binary download (-ModelOnly flag set).'
+    }
+    Install-ModelFile -DownloadUrl $downloadUrls.Model
+    New-DeploymentLauncher
+    Write-Success 'SUCCESS! Your local AI environment is fully deployed.'
+    Write-Success "Desktop launcher created at: $($Paths.LauncherPath)"
 }
 
 Main

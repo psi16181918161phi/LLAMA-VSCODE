@@ -5,3 +5,4 @@ _do_not_track
 # Keep private workspace notes usable locally but never tracked by Git
 /chat_private/**
 
+*lh/

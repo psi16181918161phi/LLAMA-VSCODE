@@ -4,7 +4,7 @@ cd /d "C:\llama_cpp"
 title Local AI Server
 if not defined LLAMA_PORT set "LLAMA_PORT=8009"
 if not defined LLAMA_CTX_SIZE set "LLAMA_CTX_SIZE=4096"
-if not defined LLAMA_GPU_LAYERS set "LLAMA_GPU_LAYERS=35"
+if not defined LLAMA_GPU_LAYERS set "LLAMA_GPU_LAYERS=28"
 if not defined LLAMA_THREADS set "LLAMA_THREADS=8"
 if not exist "llama-server.exe" (
 	echo llama-server.exe was not found in "C:\llama_cpp".
