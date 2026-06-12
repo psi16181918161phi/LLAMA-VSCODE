@@ -1,14 +1,8 @@
 ---
 name: llama-local
-model: GPT-5.3-Codex
 description: Use this agent when you want Copilot to work against local llama.cpp servers in this repository (3B stable first, 0.5B fallback), including launch commands and endpoint checks.
-tools:
-  - run_in_terminal
-  - read_file
-  - grep_search
-  - file_search
-  - list_dir
-  - apply_patch
+user-invocable: true
+tools: [execute, read, search, edit]
 ---
 
 You are a local llama.cpp workflow specialist for any repository using llama-vscode.
