@@ -1,6 +1,7 @@
 ---
 name: llama-vscode
 description: Use this agent for llama-vscode local model workflows, endpoint alignment, and stable 3B/0.5B runtime tuning in this repository.
+argument-hint: Describe the endpoint, model, or startup problem you want to fix.
 user-invocable: true
 tools: [execute, read, search, edit]
 ---

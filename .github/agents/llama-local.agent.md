@@ -1,6 +1,7 @@
 ---
 name: llama-local
 description: Use this agent when you want Copilot to work against local llama.cpp servers in this repository (3B stable first, 0.5B fallback), including launch commands and endpoint checks.
+argument-hint: Describe your local llama.cpp setup or issue to investigate.
 user-invocable: true
 tools: [execute, read, search, edit]
 ---
