@@ -3,9 +3,9 @@
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/powershell/)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)](https://www.microsoft.com/windows)
 [![Runtime](https://img.shields.io/badge/llama.cpp-CUDA%20build-success)](https://github.com/ggml-org/llama.cpp)
-[![Model](https://img.shields.io/badge/Model-Qwen2.5--Coder--14B--Instruct--Q4__K__M-orange)](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct-GGUF)
+[![Model](https://img.shields.io/badge/Models-Qwen2.5--Coder--3B%20%7C%200.5B-orange)](https://huggingface.co/Qwen)
 
-Professional Windows deployment automation for a local **llama.cpp** server using a **Hugging Face GGUF** model. This project centers on the `installing_ggufs_hf.ps1` script, which downloads the latest compatible `llama.cpp` CUDA build, fetches a Qwen GGUF model, extracts binaries, and creates a desktop launcher for local inference.
+Professional Windows deployment automation for a local **llama.cpp** server using **Hugging Face GGUF** models. This project centers on the `installing_ggufs_hf.ps1` script, which downloads the latest compatible `llama.cpp` CUDA build, fetches a Qwen GGUF model, extracts binaries, and creates a desktop launcher for local inference.
 
 ## Overview
 
@@ -18,21 +18,25 @@ The deployment script automates the following:
 - Downloads the selected release ZIP
 - Extracts the binaries into `C:\llama_cpp`
 - Resolves the exact model file from Hugging Face metadata
-- Downloads `Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf`
+- Downloads a stable coding model:
+	- default: `qwen2.5-coder-3b-instruct-q4_k_m.gguf`
+	- optional tiny fallback: `qwen2.5-coder-0.5b-instruct-q2_k.gguf`
 - Creates a desktop launcher:
 	- `Start-AI-Server.bat`
 - Starts `llama-server.exe` with predefined runtime arguments
 
-## Included Deployment Target
+## Included Deployment Targets
 
 The current script is preconfigured for:
 
-- **Model repository:** `Qwen/Qwen2.5-Coder-14B-Instruct-GGUF`
-- **Model file:** `Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf`
+- **Default model repository:** `Qwen/Qwen2.5-Coder-3B-Instruct-GGUF`
+- **Default model file:** `qwen2.5-coder-3b-instruct-q4_k_m.gguf`
+- **Tiny fallback model repository:** `Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF`
+- **Tiny fallback model file:** `qwen2.5-coder-0.5b-instruct-q2_k.gguf`
 - **Server port:** `8009`
-- **Safe default context size:** `4096`
-- **Safe default GPU layers:** `35`
-- **Safe default threads:** `8`
+- **Safe default context size:** `3072` (3B), `2048` (0.5B)
+- **Safe default GPU layers:** `16` (3B), `8` (0.5B)
+- **Safe default threads:** `6` (3B), `4` (0.5B)
 
 ## Features
 
@@ -98,15 +102,27 @@ Start-AI-Server.bat
 This launcher starts:
 
 ```text
-llama-server.exe --model "C:\AI_Models\Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf" --port %LLAMA_PORT% --ctx-size %LLAMA_CTX_SIZE% -ngl %LLAMA_GPU_LAYERS% --threads %LLAMA_THREADS%
+llama-server.exe --model "C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf" --port %LLAMA_PORT% --ctx-size %LLAMA_CTX_SIZE% -ngl %LLAMA_GPU_LAYERS% --threads %LLAMA_THREADS%
 ```
 
 The generated launcher uses conservative defaults for Windows laptops:
 
 - `LLAMA_PORT=8009`
-- `LLAMA_CTX_SIZE=4096`
-- `LLAMA_GPU_LAYERS=35`
-- `LLAMA_THREADS=8`
+- `LLAMA_CTX_SIZE=3072`
+- `LLAMA_GPU_LAYERS=16`
+- `LLAMA_THREADS=6`
+
+For the tiny fallback model, use:
+
+```powershell
+.\installing_ggufs_hf.ps1 -Tiny -ModelOnly
+```
+
+Then launch with:
+
+```text
+Start-AI-Server-0.5B.bat
+```
 
 You can override them per launch before starting the batch file, for example:
 
@@ -139,7 +155,7 @@ Then selects a matching asset using this pattern:
 
 Instead of hardcoding a direct model download link, it queries:
 
-- `https://huggingface.co/api/models/Qwen/Qwen2.5-Coder-14B-Instruct-GGUF`
+- `https://huggingface.co/api/models/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF`
 
 This reduces failures caused by stale URLs or repository-side changes.
 
@@ -167,7 +183,8 @@ The generated batch launcher:
 | llama.cpp directory | `C:\llama_cpp` |
 | model directory | `C:\AI_Models` |
 | downloaded ZIP | `C:\llama_cpp\llama-win.zip` |
-| model file | `C:\AI_Models\Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf` |
+| model file (default) | `C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf` |
+| model file (tiny fallback) | `C:\AI_Models\qwen2.5-coder-0.5b-instruct-q2_k.gguf` |
 | launcher | `%USERPROFILE%\Desktop\Start-AI-Server.bat` |
 
 ## Known Considerations and Subsidiary Issues
@@ -259,7 +276,7 @@ This usually indicates an upstream packaging layout change in the downloaded `ll
 Confirm the expected file exists:
 
 ```text
-C:\AI_Models\Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf
+C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf
 ```
 
 ## Customization

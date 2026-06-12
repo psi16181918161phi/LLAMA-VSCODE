@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$ModelOnly,
-    [switch]$Small
+    [switch]$Small,
+    [switch]$Tiny
 )
 
 Set-StrictMode -Version Latest
@@ -35,14 +36,20 @@ class DownloadResult {
     }
 }
 
-if ($Small) {
+if ($Tiny) {
+    $ModelRepository = 'Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF'
+    $ModelFileName = 'qwen2.5-coder-0.5b-instruct-q2_k.gguf'
+    $LauncherFileName = 'Start-AI-Server-0.5B.bat'
+    $DefaultCtxSize = 2048
+    $DefaultGpuLayers = 8
+    $DefaultThreads = 4
+} else {
     $ModelRepository = 'Qwen/Qwen2.5-Coder-3B-Instruct-GGUF'
     $ModelFileName = 'qwen2.5-coder-3b-instruct-q4_k_m.gguf'
-    $LauncherFileName = 'Start-AI-Server-3B.bat'
-} else {
-    $ModelRepository = 'Qwen/Qwen2.5-Coder-14B-Instruct-GGUF'
-    $ModelFileName = 'Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf'
-    $LauncherFileName = 'Start-AI-Server.bat'
+    $LauncherFileName = if ($Small) { 'Start-AI-Server-3B.bat' } else { 'Start-AI-Server.bat' }
+    $DefaultCtxSize = 3072
+    $DefaultGpuLayers = 16
+    $DefaultThreads = 6
 }
 
 $Paths = [DeploymentPaths]::new(
@@ -495,6 +502,15 @@ Directory containing llama-server.exe.
 .PARAMETER ModelFile
 Absolute path to model .gguf file.
 
+.PARAMETER DefaultCtxSize
+Default context size for generated launcher.
+
+.PARAMETER DefaultGpuLayers
+Default GPU layer offload value for generated launcher.
+
+.PARAMETER DefaultThreads
+Default CPU thread count for generated launcher.
+
 .OUTPUTS
 None.
 
@@ -513,7 +529,19 @@ THROWS/EXCEPTIONS: Throws wrapped filesystem write failures.
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$ModelFile
+        [string]$ModelFile,
+
+        [Parameter(Mandatory)]
+        [ValidateRange(256, 32768)]
+        [int]$DefaultCtxSize,
+
+        [Parameter(Mandatory)]
+        [ValidateRange(0, 200)]
+        [int]$DefaultGpuLayers,
+
+        [Parameter(Mandatory)]
+        [ValidateRange(1, 128)]
+        [int]$DefaultThreads
     )
 
     $content = @"
@@ -522,9 +550,9 @@ setlocal
 cd /d "$WorkingDirectory"
 title Local AI Server
 if not defined LLAMA_PORT set "LLAMA_PORT=8009"
-if not defined LLAMA_CTX_SIZE set "LLAMA_CTX_SIZE=4096"
-if not defined LLAMA_GPU_LAYERS set "LLAMA_GPU_LAYERS=28"
-if not defined LLAMA_THREADS set "LLAMA_THREADS=8"
+if not defined LLAMA_CTX_SIZE set "LLAMA_CTX_SIZE=$DefaultCtxSize"
+if not defined LLAMA_GPU_LAYERS set "LLAMA_GPU_LAYERS=$DefaultGpuLayers"
+if not defined LLAMA_THREADS set "LLAMA_THREADS=$DefaultThreads"
 if not exist "llama-server.exe" (
 	echo llama-server.exe was not found in "$WorkingDirectory".
 	pause
@@ -632,7 +660,7 @@ function Install-ModelFile {
         [string]$DownloadUrl
     )
 
-    $modelLabel = if ($Small) { 'Qwen 2.5 Coder 3B (small)' } else { 'Qwen 2.5 Coder 14B' }
+    $modelLabel = if ($Tiny) { 'Qwen 2.5 Coder 0.5B (tiny)' } else { 'Qwen 2.5 Coder 3B' }
     Write-Info "Downloading $modelLabel GGUF directly from Hugging Face..."
 
     $modelTotalBytes = Get-RemoteFileSizeBytes -Uri $DownloadUrl
@@ -653,7 +681,7 @@ function New-DeploymentLauncher {
     [CmdletBinding()]
     param()
 
-    New-LauncherScript -Path $Paths.LauncherPath -WorkingDirectory $Paths.LlamaCppDirectory -ModelFile $Paths.ModelPath
+    New-LauncherScript -Path $Paths.LauncherPath -WorkingDirectory $Paths.LlamaCppDirectory -ModelFile $Paths.ModelPath -DefaultCtxSize $DefaultCtxSize -DefaultGpuLayers $DefaultGpuLayers -DefaultThreads $DefaultThreads
 }
 
 function Main {
