@@ -66,13 +66,13 @@ function Start-LlamaServer {
     Write-Log "  [>>] Starting $Name (port $Port)..."
     
     try {
-        # Start in minimized window, detached from current process
+        # Start hidden, detached from current process
         $pinfo = New-Object System.Diagnostics.ProcessStartInfo
         $pinfo.FileName = $LLAMA_EXE
         $pinfo.Arguments = "--model `"$MODEL_PATH`" --port $Port --ctx-size $CTX_SIZE -ngl $GPU_LAYERS --threads $THREADS"
-        $pinfo.UseShellExecute = $true
-        $pinfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
-        $pinfo.CreateNoWindow = $false
+        $pinfo.UseShellExecute = $false
+        $pinfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $pinfo.CreateNoWindow = $true
         
         $process = [System.Diagnostics.Process]::Start($pinfo)
         

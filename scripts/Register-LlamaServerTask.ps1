@@ -58,18 +58,26 @@ try {
     # Create the task trigger (at logon)
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
     
-    # Create the task action
+    # Create the task action (WindowStyle Hidden so no console appears at logon)
     $action = New-ScheduledTaskAction `
         -Execute "powershell.exe" `
-        -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$watcherScript`" -CheckIntervalSeconds 5"
+        -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$watcherScript`" -CheckIntervalSeconds 5"
     
-    # Create the task settings
-    $settings = New-ScheduledTaskSettingsSet `
-        -AllowStartIfOnBatteries `
-        -DontStopIfGoingOnBatteries `
-        -StartWhenAvailable `
-        -RunOnlyIfNetworkAvailable:$false `
-        -MultipleInstancePolicy IgnoreNew
+    # Create task settings (compatible across ScheduledTasks module variants)
+    try {
+        $settings = New-ScheduledTaskSettingsSet `
+            -AllowStartIfOnBatteries `
+            -DontStopIfGoingOnBatteries `
+            -StartWhenAvailable `
+            -RunOnlyIfNetworkAvailable:$false `
+            -MultipleInstances IgnoreNew
+    } catch {
+        $settings = New-ScheduledTaskSettingsSet `
+            -AllowStartIfOnBatteries `
+            -DontStopIfGoingOnBatteries `
+            -StartWhenAvailable `
+            -RunOnlyIfNetworkAvailable:$false
+    }
     
     # Register the task
     $task = Register-ScheduledTask `
