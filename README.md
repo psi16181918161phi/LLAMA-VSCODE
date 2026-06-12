@@ -5,7 +5,7 @@
 [![Runtime](https://img.shields.io/badge/llama.cpp-CUDA%20build-success)](https://github.com/ggml-org/llama.cpp)
 [![Model](https://img.shields.io/badge/Models-Qwen2.5--Coder--3B%20%7C%200.5B-orange)](https://huggingface.co/Qwen)
 
-Professional Windows deployment automation for a local **llama.cpp** server using **Hugging Face GGUF** models. This project centers on the `installing_ggufs_hf.ps1` script, which downloads the latest compatible `llama.cpp` CUDA build, fetches a Qwen GGUF model, extracts binaries, and creates a desktop launcher for local inference.
+Professional Windows deployment automation for a local **llama.cpp** server using **Hugging Face GGUF** models. This project centers on the `installing_ggufs_hf.ps1` script, which downloads the latest compatible `llama.cpp` CUDA build, fetches a Qwen GGUF model, extracts binaries, and creates desktop launchers for local inference.
 
 ## Overview
 
@@ -21,9 +21,11 @@ The deployment script automates the following:
 - Downloads a stable coding model:
 	- default: `qwen2.5-coder-3b-instruct-q4_k_m.gguf`
 	- optional tiny fallback: `qwen2.5-coder-0.5b-instruct-q2_k.gguf`
-- Creates a desktop launcher:
-	- `Start-AI-Server.bat`
-- Starts `llama-server.exe` with predefined runtime arguments
+- Creates desktop launchers:
+	- `Start-AI-Server.bat` (3-endpoint stack)
+	- `Start-AI-Server-3B.bat` (3B wrapper)
+	- `Start-AI-Server-0.5B.bat` (0.5B wrapper)
+- Starts `llama-server.exe` with predefined runtime arguments on all required llama-vscode endpoints
 
 ## Included Deployment Targets
 
@@ -52,6 +54,10 @@ The current script is preconfigured for:
 
 ```text
 LLAMA-VSCODE/
+├─ scripts/Configure-LlamaVscode.ps1
+├─ Start-AI-Server.bat
+├─ Start-AI-Server-3B.bat
+├─ Start-AI-Server-0.5B.bat
 ├─ installing_ggufs_hf.ps1
 └─ README.md
 ```
@@ -102,7 +108,9 @@ Start-AI-Server.bat
 This launcher starts:
 
 ```text
-llama-server.exe --model "C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf" --port %LLAMA_PORT% --ctx-size %LLAMA_CTX_SIZE% -ngl %LLAMA_GPU_LAYERS% --threads %LLAMA_THREADS%
+tools      -> http://localhost:8009
+chat       -> http://localhost:8011
+completion -> http://localhost:8012
 ```
 
 The generated launcher uses conservative defaults for Windows laptops:
@@ -111,6 +119,8 @@ The generated launcher uses conservative defaults for Windows laptops:
 - `LLAMA_CTX_SIZE=3072`
 - `LLAMA_GPU_LAYERS=16`
 - `LLAMA_THREADS=6`
+
+Each run also applies a llama-vscode bootstrap in user settings so agent/model selection does not require manual reconfiguration.
 
 For the tiny fallback model, use:
 
