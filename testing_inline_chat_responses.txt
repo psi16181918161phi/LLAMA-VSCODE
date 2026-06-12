@@ -1,0 +1,16 @@
+Project notes template:
+
+Purpose:
+- Use this file to draft and validate inline chat/code responses.
+
+Quick checklist:
+- [ ] Define the task clearly.
+- [ ] Include expected input/output examples.
+- [ ] Record assumptions and constraints.
+- [ ] Add edge cases to test.
+- [ ] Summarize final result.
+
+Example task:
+- Convert a sentence to title case.
+- Input: "hello world from vscode"
+- Output: "Hello World From Vscode"

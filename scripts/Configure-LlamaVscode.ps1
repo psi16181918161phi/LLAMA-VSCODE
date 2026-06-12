@@ -51,6 +51,7 @@ $launchCompletion = "`"$llamaExe`" --model `"$ModelPath`" --port $CompletionPort
 
 Set-SettingValue -Target $settings -Name 'llama-vscode.tool_create_agent_enabled' -Value $true
 Set-SettingValue -Target $settings -Name 'llama-vscode.tool_edit_file_enabled' -Value $true
+Set-SettingValue -Target $settings -Name 'llama-vscode.tool_permit_file_changes' -Value $true
 Set-SettingValue -Target $settings -Name 'llama-vscode.tool_read_file_enabled' -Value $true
 Set-SettingValue -Target $settings -Name 'llama-vscode.tool_get_diff_enabled' -Value $true
 Set-SettingValue -Target $settings -Name 'llama-vscode.tool_list_directory_enabled' -Value $true

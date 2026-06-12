@@ -119,15 +119,39 @@ function Bootstrap-Settings {
         }
         
         $settings = $settingsRaw | ConvertFrom-Json
-        
-        # Ensure llama-vscode agent creation is enabled
-        if ($settings.'llama-vscode.tool_create_agent_enabled' -ne $true) {
-            $settings.'llama-vscode.tool_create_agent_enabled' = $true
-            $settings | ConvertTo-Json -Depth 20 | Set-Content -Path $settingsPath -Encoding UTF8
-            Write-Log "  [OK] Bootstrap: Enabled llama-vscode agent creation"
+
+        function Set-SettingValue {
+            param(
+                [object]$Target,
+                [string]$Name,
+                [object]$Value
+            )
+
+            if ($Target.PSObject.Properties.Name -contains $Name) {
+                $changed = $Target.$Name -ne $Value
+                $Target.$Name = $Value
+                return $changed
+            }
+
+            $Target | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
             return $true
         }
-        
+
+        $changedAny = $false
+        $changedAny = (Set-SettingValue -Target $settings -Name 'llama-vscode.tool_create_agent_enabled' -Value $true) -or $changedAny
+        $changedAny = (Set-SettingValue -Target $settings -Name 'llama-vscode.tool_edit_file_enabled' -Value $true) -or $changedAny
+        $changedAny = (Set-SettingValue -Target $settings -Name 'llama-vscode.tool_permit_file_changes' -Value $true) -or $changedAny
+        $changedAny = (Set-SettingValue -Target $settings -Name 'llama-vscode.tool_read_file_enabled' -Value $true) -or $changedAny
+        $changedAny = (Set-SettingValue -Target $settings -Name 'llama-vscode.tool_get_diff_enabled' -Value $true) -or $changedAny
+        $changedAny = (Set-SettingValue -Target $settings -Name 'llama-vscode.tool_list_directory_enabled' -Value $true) -or $changedAny
+        $changedAny = (Set-SettingValue -Target $settings -Name 'llama-vscode.tools_max_iterations' -Value 20) -or $changedAny
+
+        if ($changedAny) {
+            $settings | ConvertTo-Json -Depth 20 | Set-Content -Path $settingsPath -Encoding UTF8
+            Write-Log "  [OK] Bootstrap: Enforced llama-vscode inline edit tool settings"
+            return $true
+        }
+
         return $false
     } catch {
         Write-Log "  [WARN] Bootstrap warning: $_"
