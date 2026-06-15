@@ -3,7 +3,8 @@ param(
     [switch]$ModelOnly,
     [string]$HfRepo,
     [string]$HfFile,
-    [string]$Profile,
+    [Alias('Profile')]
+    [string]$ModelProfile,
     [string]$ProfileName,
     [switch]$Small,
     [switch]$Tiny
@@ -11,6 +12,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'scripts\Validate-ModelProfile.ps1')
 
 class DeploymentPaths {
     [string]$LlamaCppDirectory
@@ -62,12 +65,9 @@ class ModelProfile {
 
 # Load profile if specified
 $ProfileObj = $null
-if ($Profile) {
-    $profilePath = Join-Path $PSScriptRoot "models\$Profile.json"
-    if (-not (Test-Path $profilePath)) {
-        throw "Profile file not found: $profilePath"
-    }
-    $profileJson = Get-Content $profilePath -Raw | ConvertFrom-Json
+if ($ModelProfile) {
+    $profilePath = Join-Path $PSScriptRoot "models\$ModelProfile.json"
+    $profileJson = Test-ModelProfileFile -ProfilePath $profilePath
     $ProfileObj = [ModelProfile]::new(
         $profileJson.name,
         $profileJson.hf_repo,
@@ -732,6 +732,7 @@ function Save-ModelProfile {
     }
 
     $profileObj | ConvertTo-Json -Depth 4 | Set-Content -Path $profilePath -Encoding ASCII
+    [void](Test-ModelProfileFile -ProfilePath $profilePath)
     return $profilePath
 }
 
@@ -898,7 +899,7 @@ function Resolve-RuntimeDefaults {
     Write-Info "Auto-safe defaults selected from file size: ctx=$DefaultCtxSize ngl=$DefaultGpuLayers threads=$DefaultThreads"
 }
 
-function Finalize-GeneralizedArtifacts {
+function Complete-GeneralizedArtifacts {
     [CmdletBinding()]
     param()
 
@@ -925,9 +926,11 @@ function Main {
     Install-ModelFile -DownloadUrl $downloadUrls.Model
     Resolve-RuntimeDefaults
     New-DeploymentLauncher
-    Finalize-GeneralizedArtifacts
+    Complete-GeneralizedArtifacts
     Write-Success 'SUCCESS! Your local AI environment is fully deployed.'
     Write-Success "Desktop launcher created at: $($Paths.LauncherPath)"
 }
 
-Main
+if (-not $script:LLamaInstallerSkipMain) {
+    Main
+}

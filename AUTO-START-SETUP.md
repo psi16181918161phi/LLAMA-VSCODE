@@ -16,6 +16,13 @@ This guide configures the llama-cpp server stack to automatically start when VS 
 
 ## Quick Start
 
+Before enabling auto-start, make sure at least one model profile is installed:
+
+```powershell
+cd c:\Users\lordx\Desktop\LLAMA-VSCODE
+.\installing_ggufs_hf.ps1 -Profile qwen2.5-3b
+```
+
 ### Option 1: Manual Watcher (Recommended for Testing)
 
 1. Open PowerShell
@@ -25,7 +32,7 @@ This guide configures the llama-cpp server stack to automatically start when VS 
    ```
 3. Start the auto-watcher:
    ```batch
-   .\Start-AI-Server-AutoWatcher.bat
+   .\Start-AI-Server-AutoWatcher.bat -Profile qwen2.5-3b
    ```
 4. Keep the window open - it monitors VS Code instances
 5. Launch VS Code - servers should auto-start
@@ -45,7 +52,7 @@ For automatic startup with Windows login:
    ```
 3. Register the scheduled task:
    ```powershell
-   .\Register-LlamaServerTask.ps1
+   .\Register-LlamaServerTask.ps1 -Profile qwen2.5-3b
    ```
 4. Task will:
    - Auto-start when you log in
@@ -76,6 +83,14 @@ This checks:
 - ✓ Agent discovery (llama-local, llama-vscode)
 - ✓ Settings bootstrap state
 
+### Test 1.1: Validate Profile Schema
+
+```powershell
+cd c:\Users\lordx\Desktop\LLAMA-VSCODE\scripts
+. .\Validate-ModelProfile.ps1
+Test-ModelProfileFile -ProfilePath ..\models\qwen2.5-3b.json -SchemaPath ..\models\model-profile.schema.json
+```
+
 ### Test 2: Manual Server Startup
 
 Start the server stack manually to verify endpoints:
@@ -97,7 +112,7 @@ Invoke-RestMethod http://localhost:8012/v1/models
 
 1. Start the watcher:
    ```batch
-   .\Start-AI-Server-AutoWatcher.bat
+   .\Start-AI-Server-AutoWatcher.bat -Profile qwen2.5-3b
    ```
 2. Open VS Code
 3. Wait 10 seconds
@@ -180,10 +195,15 @@ llama-vscode Extension
 
 ```
 LLAMA-VSCODE/
+├── models/
+│   ├── model-profile.schema.json             ← Profile schema
+│   ├── qwen2.5-3b.json                       ← Starter profile
+│   └── qwen2.5-0.5b.json                     ← Starter profile
 ├── Start-AI-Server-AutoWatcher.bat          ← Start watcher manually
 ├── scripts/
 │   ├── Start-LlamaServerWatcher.ps1         ← Core watcher logic
 │   ├── Register-LlamaServerTask.ps1         ← Register Windows task
+│   ├── Validate-ModelProfile.ps1            ← Profile validation gate
 │   ├── Validate-InlineChatFeatures.ps1      ← Validation script
 │   └── Configure-LlamaVscode.ps1            ← Settings bootstrap
 ```

@@ -22,9 +22,8 @@ function Search-GgufRepositories {
         [int]$Limit
     )
 
-    $baseUrl = 'https://huggingface.co/api/models'
     $authorPart = if ($Publisher) { '&author=' + [uri]::EscapeDataString($Publisher) } else { '' }
-    $url = "$baseUrl?search=$([uri]::EscapeDataString($SearchQuery))&filter=gguf$authorPart&limit=$Limit"
+    $url = "https://huggingface.co/api/models?search=$([uri]::EscapeDataString($SearchQuery))&filter=gguf$authorPart&limit=$Limit"
 
     Invoke-RestMethod -Uri $url -Headers (Get-RequestHeaders)
 }
@@ -43,7 +42,7 @@ function Get-RepositoryGgufFiles {
 }
 
 if ($Repository) {
-    Write-Host ("GGUF files in {0}:" -f $Repository) -ForegroundColor Cyan
+    Write-Host ('GGUF files in ' + $Repository + ':') -ForegroundColor Cyan
     Get-RepositoryGgufFiles -Repo $Repository | Format-Table -AutoSize
     exit 0
 }

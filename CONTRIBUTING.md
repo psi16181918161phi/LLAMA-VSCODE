@@ -73,7 +73,18 @@ The following will not be accepted:
    ```powershell
    .\scripts\Validate-InlineChatFeatures.ps1 -Verbose
    ```
-6. Commit, push, and open a pull request.
+6. **Validate model profiles**:
+   ```powershell
+   . .\scripts\Validate-ModelProfile.ps1
+   Get-ChildItem .\models -Filter *.json |
+     Where-Object { $_.Name -ne 'model-profile.schema.json' } |
+     ForEach-Object { Test-ModelProfileFile -ProfilePath $_.FullName -SchemaPath .\models\model-profile.schema.json }
+   ```
+7. **Run Pester tests**:
+   ```powershell
+   Invoke-Pester -Path .\tests
+   ```
+8. Commit, push, and open a pull request.
 
 ---
 
@@ -130,9 +141,13 @@ Commits must be atomic: one logical change per commit.
    ```powershell
    .\scripts\Validate-InlineChatFeatures.ps1
    ```
-4. Address all review feedback before requesting a final review.
-5. **Do not force-push** to a PR branch after review has started.
-6. The project maintainer reserves the right to merge, close, or request changes on any PR without a time commitment.
+4. Ensure tests pass:
+   ```powershell
+   Invoke-Pester -Path .\tests
+   ```
+5. Address all review feedback before requesting a final review.
+6. **Do not force-push** to a PR branch after review has started.
+7. The project maintainer reserves the right to merge, close, or request changes on any PR without a time commitment.
 
 ---
 

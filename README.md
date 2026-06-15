@@ -5,7 +5,7 @@
 [![Runtime](https://img.shields.io/badge/llama.cpp-CUDA%20build-success)](https://github.com/ggml-org/llama.cpp)
 [![Model](https://img.shields.io/badge/Models-Qwen2.5--Coder--3B%20%7C%200.5B-orange)](https://huggingface.co/Qwen)
 
-Professional Windows deployment automation for a local **llama.cpp** server using **Hugging Face GGUF** models. This project centers on the `installing_ggufs_hf.ps1` script, which downloads the latest compatible `llama.cpp` CUDA build, fetches a Qwen GGUF model, extracts binaries, and creates desktop launchers for local inference.
+Professional Windows deployment automation for a local **llama.cpp** server using **Hugging Face GGUF** models. This project now uses a profile-driven workflow centered on `installing_ggufs_hf.ps1`, letting you run either built-in profiles or arbitrary Hugging Face GGUF repositories with safe defaults.
 
 ## Overview
 
@@ -18,9 +18,9 @@ The deployment script automates the following:
 - Downloads the selected release ZIP
 - Extracts the binaries into `C:\llama_cpp`
 - Resolves the exact model file from Hugging Face metadata
-- Downloads a stable coding model:
-	- default: `qwen2.5-coder-3b-instruct-q4_k_m.gguf`
-	- optional tiny fallback: `qwen2.5-coder-0.5b-instruct-q2_k.gguf`
+- Downloads a model from either:
+	- a local profile in `models/*.json`
+	- direct parameters `-HfRepo` and `-HfFile`
 - Creates desktop launchers:
 	- `Start-AI-Server.bat` (3-endpoint stack)
 	- `Start-AI-Server-3B.bat` (3B wrapper)
@@ -29,12 +29,10 @@ The deployment script automates the following:
 
 ## Included Deployment Targets
 
-The current script is preconfigured for:
+Built-in starter profiles:
 
-- **Default model repository:** `Qwen/Qwen2.5-Coder-3B-Instruct-GGUF`
-- **Default model file:** `qwen2.5-coder-3b-instruct-q4_k_m.gguf`
-- **Tiny fallback model repository:** `Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF`
-- **Tiny fallback model file:** `qwen2.5-coder-0.5b-instruct-q2_k.gguf`
+- **Profile:** `models/qwen2.5-3b.json`
+- **Profile:** `models/qwen2.5-0.5b.json`
 - **Server port:** `8009`
 - **Safe default context size:** `3072` (3B), `2048` (0.5B)
 - **Safe default GPU layers:** `16` (3B), `8` (0.5B)
@@ -54,11 +52,19 @@ The current script is preconfigured for:
 
 ```text
 LLAMA-VSCODE/
+├─ models/model-profile.schema.json
+├─ models/qwen2.5-3b.json
+├─ models/qwen2.5-0.5b.json
 ├─ scripts/Configure-LlamaVscode.ps1
+├─ scripts/Validate-ModelProfile.ps1
+├─ scripts/Find-HuggingFaceGGUF.ps1
+├─ tests/InstallerBehavior.Tests.ps1
+├─ tests/ModelProfileValidation.Tests.ps1
 ├─ Start-AI-Server.bat
 ├─ Start-AI-Server-3B.bat
 ├─ Start-AI-Server-0.5B.bat
 ├─ installing_ggufs_hf.ps1
+├─ USER-GUIDE.md
 └─ README.md
 ```
 
@@ -97,6 +103,18 @@ Open PowerShell and run:
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\installing_ggufs_hf.ps1
+```
+
+Install by profile name:
+
+```powershell
+.\installing_ggufs_hf.ps1 -Profile qwen2.5-3b
+```
+
+Install any GGUF model directly from Hugging Face:
+
+```powershell
+.\installing_ggufs_hf.ps1 -HfRepo "TheBloke/Mistral-7B-Instruct-v0.2-GGUF" -HfFile "mistral-7b-instruct-v0.2.Q4_K_M.gguf" -ProfileName "mistral-7b"
 ```
 
 After completion, use the generated desktop shortcut batch file:
@@ -142,6 +160,82 @@ $env:LLAMA_CTX_SIZE = '3072'
 $env:LLAMA_THREADS = '8'
 ./Start-AI-Server.bat
 ```
+
+Start using a profile at runtime:
+
+```batch
+Start-AI-Server.bat -Profile qwen2.5-3b
+```
+
+Start watcher using a profile:
+
+```batch
+Start-AI-Server-AutoWatcher.bat -Profile qwen2.5-3b
+```
+
+Register scheduled task for a profile:
+
+```powershell
+cd .\scripts
+.\Register-LlamaServerTask.ps1 -Profile qwen2.5-3b
+```
+
+Discover GGUF repositories and files:
+
+```powershell
+cd .\scripts
+.\Find-HuggingFaceGGUF.ps1 -Query "phi 3 mini instruct" -Author "microsoft"
+.\Find-HuggingFaceGGUF.ps1 -Query "mistral instruct gguf" -Author "TheBloke"
+.\Find-HuggingFaceGGUF.ps1 -Query "mistral" -Repository "TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
+```
+
+## Profile Schema and Validation Gate
+
+Profile files are validated before use.
+
+- JSON schema: `models/model-profile.schema.json`
+- Validation script: `scripts/Validate-ModelProfile.ps1`
+
+Validate one profile:
+
+```powershell
+. .\scripts\Validate-ModelProfile.ps1
+Test-ModelProfileFile -ProfilePath .\models\qwen2.5-3b.json -SchemaPath .\models\model-profile.schema.json
+```
+
+Validate all profiles:
+
+```powershell
+. .\scripts\Validate-ModelProfile.ps1
+Get-ChildItem .\models -Filter *.json |
+	Where-Object { $_.Name -ne 'model-profile.schema.json' } |
+	ForEach-Object { Test-ModelProfileFile -ProfilePath $_.FullName -SchemaPath .\models\model-profile.schema.json }
+```
+
+## Tests and Local Quality Checks
+
+Run Pester tests:
+
+```powershell
+Invoke-Pester -Path .\tests
+```
+
+Run script parse check:
+
+```powershell
+Get-ChildItem -Recurse -Filter *.ps1 |
+	Where-Object { $_.FullName -notmatch '\\.history\\' } |
+	ForEach-Object {
+		$tokens = $null
+		$errors = $null
+		[void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
+		if ($errors) { throw "Parse failed: $($_.FullName)" }
+	}
+```
+
+PR CI runs these checks automatically via `.github/workflows/powershell-quality.yml`.
+
+For full operator instructions, see `USER-GUIDE.md`.
 
 ## What the Script Does Internally
 

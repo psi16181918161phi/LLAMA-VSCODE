@@ -19,6 +19,7 @@ This project exists to eliminate the manual steps typically required to stand up
 ## Design Philosophy
 
 - **Conservative defaults.** Hardware profiles, GPU layer counts, and context window sizes are set conservatively to avoid crashes on mid-range laptops. The project explicitly targets machines that cannot safely run 14B+ parameter models.
+- **Profile-driven extensibility.** Any supported GGUF model can be onboarded through validated profile JSON, instead of hardcoding values in scripts.
 - **Automation without magic.** Every step the script performs is transparent and documented. There are no hidden registry writes, no unsigned executable installs, and no telemetry.
 - **Idempotency.** Re-running any script or launcher produces the same result as the first run.
 - **Minimal footprint.** The project writes only to a small set of well-documented paths (`C:\llama_cpp`, `C:\AI_Models`, `%APPDATA%\Code\User`) and does not modify system-wide settings.
@@ -47,14 +48,14 @@ This project exists to eliminate the manual steps typically required to stand up
 
 ---
 
-## Supported Models (Default)
+## Supported Models
 
 | Model | Size | Use Case |
 |---|---|---|
 | `qwen2.5-coder-3b-instruct-q4_k_m.gguf` | ~2.0 GB | Primary — code completion, inline chat |
 | `qwen2.5-coder-0.5b-instruct-q2_k.gguf` | ~300 MB | Fallback — very low VRAM systems |
 
-Both models are sourced from the [Qwen](https://huggingface.co/Qwen) organisation on Hugging Face and are subject to the Qwen model license.
+The repository ships with two starter profiles sourced from [Qwen](https://huggingface.co/Qwen). Additional models can be installed from any Hugging Face GGUF repository using `-HfRepo` and `-HfFile`, then persisted as validated profiles in `models/`.
 
 ---
 

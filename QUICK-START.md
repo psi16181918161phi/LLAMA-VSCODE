@@ -1,32 +1,72 @@
-# Quick Start: Auto-Start Llama Servers
+# Quick Start: Profile-Based Local Llama Servers
 
-## What's New?
+## What You Can Do
 
-✅ **No more manual server startup!**
+- Install built-in profiles or any GGUF from Hugging Face
+- Start server stack manually or with auto-watcher
+- Validate profile schema and runtime integration
+- Run local tests before opening pull requests
 
 - Servers auto-start when VS Code opens
-- Servers auto-stop logic available (currently keeps running for background tasks)
 - Health monitoring every 5 seconds
 - Settings auto-bootstrap every 5 minutes
+- Profile-driven model/runtime configuration
 
-## How to Use
+## Install Models
 
-### Option 1: Immediate Testing (Manual)
+### Built-in profile
+
+```powershell
+cd c:\Users\lordx\Desktop\LLAMA-VSCODE
+.\installing_ggufs_hf.ps1 -Profile qwen2.5-3b
+```
+
+### Any Hugging Face GGUF
+
+```powershell
+cd c:\Users\lordx\Desktop\LLAMA-VSCODE
+.\installing_ggufs_hf.ps1 -HfRepo "TheBloke/Mistral-7B-Instruct-v0.2-GGUF" -HfFile "mistral-7b-instruct-v0.2.Q4_K_M.gguf" -ProfileName "mistral-7b"
+```
+
+### Discover GGUF repos/files
+
+```powershell
+cd c:\Users\lordx\Desktop\LLAMA-VSCODE\scripts
+.\Find-HuggingFaceGGUF.ps1 -Query "mistral instruct gguf" -Author "TheBloke"
+.\Find-HuggingFaceGGUF.ps1 -Query "mistral" -Repository "TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
+```
+
+## Start Servers
+
+### Option 1: Manual Start
 
 ```batch
 cd c:\Users\lordx\Desktop\LLAMA-VSCODE
-Start-AI-Server-AutoWatcher.bat
+Start-AI-Server.bat -Profile qwen2.5-3b
 ```
 
-Then open VS Code - servers will auto-start.
+### Option 2: Auto-Watcher
 
-### Option 2: Auto-Start at Windows Login (Production)
+```batch
+cd c:\Users\lordx\Desktop\LLAMA-VSCODE
+Start-AI-Server-AutoWatcher.bat -Profile qwen2.5-3b
+```
+
+Then open VS Code. The watcher keeps endpoints healthy and settings bootstrapped.
+
+### Option 3: Auto-Start at Windows Login (Production)
 
 Run as Administrator:
 
 ```powershell
 cd c:\Users\lordx\Desktop\LLAMA-VSCODE\scripts
 .\Register-LlamaServerTask.ps1
+```
+
+or with profile:
+
+```powershell
+.\Register-LlamaServerTask.ps1 -Profile qwen2.5-3b
 ```
 
 Restart Windows - watcher will auto-start and manage servers.
@@ -38,7 +78,18 @@ cd c:\Users\lordx\Desktop\LLAMA-VSCODE\scripts
 .\Validate-InlineChatFeatures.ps1
 ```
 
-Expected output: **✅ All checks passed!**
+Validate profile schema:
+
+```powershell
+. .\Validate-ModelProfile.ps1
+Test-ModelProfileFile -ProfilePath ..\models\qwen2.5-3b.json -SchemaPath ..\models\model-profile.schema.json
+```
+
+Run tests:
+
+```powershell
+Invoke-Pester -Path ..\tests
+```
 
 ## Using Inline Chat
 
@@ -76,7 +127,8 @@ Get-Content $env:TEMP\llama-server-watcher.log -Wait
 ## Documentation
 
 - **Full Setup Guide:** AUTO-START-SETUP.md
-- **Test Results:** IMPLEMENTATION_REPORT.md
+- **Profile Schema:** models/model-profile.schema.json
+- **Validation Script:** scripts/Validate-ModelProfile.ps1
 - **This Quick Start:** QUICK-START.md
 
 ## System Status
