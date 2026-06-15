@@ -3,6 +3,12 @@ setlocal
 title Local AI Server Stack
 
 set "ROOT=%~dp0"
+set "PROFILE_NAME="
+set "PROFILE_PATH="
+if /I "%~1"=="-Profile" (
+	set "PROFILE_NAME=%~2"
+	set "PROFILE_PATH=%ROOT%models\%~2.json"
+)
 set "LLAMA_DIR=C:\llama_cpp"
 set "LLAMA_EXE=%LLAMA_DIR%\llama-server.exe"
 if not defined LLAMA_MODEL set "LLAMA_MODEL=C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf"
@@ -12,6 +18,18 @@ if not defined LLAMA_THREADS set "LLAMA_THREADS=6"
 if not defined LLAMA_PORT_TOOLS set "LLAMA_PORT_TOOLS=8009"
 if not defined LLAMA_PORT_CHAT set "LLAMA_PORT_CHAT=8011"
 if not defined LLAMA_PORT_COMPLETION set "LLAMA_PORT_COMPLETION=8012"
+
+if defined PROFILE_NAME (
+	if not exist "%PROFILE_PATH%" (
+		echo Profile file was not found: "%PROFILE_PATH%"
+		pause
+		exit /b 1
+	)
+	echo Loading profile "%PROFILE_NAME%"...
+	powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Get-Content -Path '%PROFILE_PATH%' -Raw | ConvertFrom-Json; @('set ""LLAMA_MODEL='+$p.model_path+'""','set ""LLAMA_CTX_SIZE='+$p.ctx_size+'""','set ""LLAMA_GPU_LAYERS='+$p.gpu_layers+'""','set ""LLAMA_THREADS='+$p.threads+'""') | Set-Content -Path '%TEMP%\llama_profile_env.cmd' -Encoding ASCII"
+	call "%TEMP%\llama_profile_env.cmd"
+	del "%TEMP%\llama_profile_env.cmd" >nul 2>&1
+)
 
 if not exist "%LLAMA_EXE%" (
 	echo llama-server.exe was not found in "%LLAMA_DIR%".

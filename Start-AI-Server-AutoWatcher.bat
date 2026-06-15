@@ -7,6 +7,9 @@ REM llama-cpp servers based on VS Code instances running
 
 set "ROOT=%~dp0"
 set "WATCHER_SCRIPT=%ROOT%scripts\Start-LlamaServerWatcher.ps1"
+set "PROFILE_NAME=qwen2.5-3b"
+if /I "%~1"=="-Profile" set "PROFILE_NAME=%~2"
+set "PROFILE_PATH=%ROOT%models\%PROFILE_NAME%.json"
 
 if not exist "%WATCHER_SCRIPT%" (
 	echo Error: Watcher script not found at %WATCHER_SCRIPT%
@@ -23,9 +26,10 @@ echo   - Auto-bootstrap settings for proper agent/model discovery
 echo   - Check endpoint health every 5 seconds
 echo.
 echo Watcher log: %TEMP%\llama-server-watcher.log
+echo Profile: %PROFILE_NAME%
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%WATCHER_SCRIPT%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%WATCHER_SCRIPT%" -ProfilePath "%PROFILE_PATH%"
 
 if errorlevel 1 (
 	echo Watcher exited with error. Check logs for details.

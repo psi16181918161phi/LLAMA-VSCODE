@@ -1,7 +1,12 @@
 param(
     [switch]$RunOnce = $false,
     [int]$CheckIntervalSeconds = 5,
-    [string]$LogPath = (Join-Path $env:TEMP 'llama-server-watcher.log')
+    [string]$LogPath = (Join-Path $env:TEMP 'llama-server-watcher.log'),
+    [string]$ProfilePath = '',
+    [string]$ModelPath = 'C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf',
+    [int]$ContextSize = 3072,
+    [int]$GpuLayers = 16,
+    [int]$Threads = 6
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -9,13 +14,25 @@ $ErrorActionPreference = 'SilentlyContinue'
 # Configuration
 $LLAMA_DIR = "C:\llama_cpp"
 $LLAMA_EXE = Join-Path $LLAMA_DIR "llama-server.exe"
-$MODEL_PATH = "C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf"
-$CTX_SIZE = 3072
-$GPU_LAYERS = 16
-$THREADS = 6
+$MODEL_PATH = $ModelPath
+$CTX_SIZE = $ContextSize
+$GPU_LAYERS = $GpuLayers
+$THREADS = $Threads
 $PORT_TOOLS = 8009
 $PORT_CHAT = 8011
 $PORT_COMPLETION = 8012
+
+if ($ProfilePath -and (Test-Path -Path $ProfilePath -PathType Leaf)) {
+    try {
+        $profile = Get-Content -Path $ProfilePath -Raw | ConvertFrom-Json
+        if ($profile.model_path) { $MODEL_PATH = [string]$profile.model_path }
+        if ($profile.ctx_size) { $CTX_SIZE = [int]$profile.ctx_size }
+        if ($profile.gpu_layers) { $GPU_LAYERS = [int]$profile.gpu_layers }
+        if ($profile.threads) { $THREADS = [int]$profile.threads }
+    } catch {
+        Write-Host "[WARN] Could not parse profile at '$ProfilePath'. Using direct parameters."
+    }
+}
 
 function Write-Log {
     param([string]$Message)
@@ -27,11 +44,11 @@ function Write-Log {
 function Test-Endpoint {
     param([int]$Port)
     try {
-        $response = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2 -ErrorAction Stop
+        Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2 -ErrorAction Stop | Out-Null
         return $true
     } catch {
         try {
-            $response = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/v1/models" -TimeoutSec 2 -ErrorAction Stop
+            Invoke-RestMethod -Uri "http://127.0.0.1:$Port/v1/models" -TimeoutSec 2 -ErrorAction Stop | Out-Null
             return $true
         } catch {
             return $false
@@ -55,8 +72,6 @@ function Start-LlamaServer {
         [int]$Port
     )
     
-    $launchCmd = "`"$LLAMA_EXE`" --model `"$MODEL_PATH`" --port $Port --ctx-size $CTX_SIZE -ngl $GPU_LAYERS --threads $THREADS"
-    
     # Check if process is already running on this port
     if (Test-ServerRunning -Port $Port) {
         Write-Log "  [OK] $Name (port $Port) already running"
@@ -74,7 +89,7 @@ function Start-LlamaServer {
         $pinfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
         $pinfo.CreateNoWindow = $true
         
-        $process = [System.Diagnostics.Process]::Start($pinfo)
+        [System.Diagnostics.Process]::Start($pinfo) | Out-Null
         
         # Wait for endpoint to become ready
         $maxAttempts = 60
@@ -105,7 +120,7 @@ function Get-VSCodeInstanceCount {
     }
 }
 
-function Bootstrap-Settings {
+function Update-LlamaBootstrapSettings {
     $settingsPath = Join-Path $env:APPDATA 'Code\User\settings.json'
     
     try {
@@ -182,7 +197,7 @@ do {
         
         # Bootstrap settings periodically (every 5 minutes)
         if ((Get-Date) - $lastBootstrap -gt (New-TimeSpan -Minutes 5)) {
-            Bootstrap-Settings | Out-Null
+            Update-LlamaBootstrapSettings | Out-Null
             $lastBootstrap = Get-Date
         }
         

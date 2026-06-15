@@ -11,4 +11,4 @@ if not exist "%LLAMA_MODEL%" (
 	pause
 	exit /b 1
 )
-call "%~dp0Start-AI-Server.bat"
+call "%~dp0Start-AI-Server.bat" -Profile qwen2.5-0.5b

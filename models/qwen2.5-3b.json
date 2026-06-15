@@ -1,0 +1,10 @@
+{
+    "name": "Qwen2.5-Coder-3B",
+    "hf_repo": "Qwen/Qwen2.5-Coder-3B-Instruct-GGUF",
+    "hf_file": "qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+    "model_path": "C:\\AI_Models\\qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+    "ctx_size": 3072,
+    "gpu_layers": 16,
+    "threads": 6,
+    "notes": "Primary stable model for this laptop"
+}

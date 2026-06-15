@@ -1,0 +1,10 @@
+{
+    "name": "Qwen2.5-Coder-0.5B",
+    "hf_repo": "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF",
+    "hf_file": "qwen2.5-coder-0.5b-instruct-q2_k.gguf",
+    "model_path": "C:\\AI_Models\\qwen2.5-coder-0.5b-instruct-q2_k.gguf",
+    "ctx_size": 2048,
+    "gpu_layers": 8,
+    "threads": 4,
+    "notes": "Fallback tiny model for this laptop"
+}

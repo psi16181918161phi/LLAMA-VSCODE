@@ -1,5 +1,6 @@
 param(
-    [switch]$Uninstall = $false
+    [switch]$Uninstall = $false,
+    [string]$Profile = 'qwen2.5-3b'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -8,6 +9,7 @@ $taskName = "Llama-Server-Auto-Watcher"
 $taskDescription = "Automatically manages llama-cpp server instances based on VS Code activity"
 $scriptRoot = Split-Path -Parent $PSScriptRoot
 $watcherScript = Join-Path $scriptRoot "scripts\Start-LlamaServerWatcher.ps1"
+$profilePath = Join-Path $scriptRoot "models\$Profile.json"
 
 function Write-Status {
     param([string]$Message, [string]$Type = "Info")
@@ -43,9 +45,16 @@ if (-not (Test-Path $watcherScript)) {
     exit 1
 }
 
+if (-not (Test-Path $profilePath)) {
+    Write-Status "Profile file not found: $profilePath" "Error"
+    Write-Status "Create the profile first or pass -Profile with an existing model profile name." "Error"
+    exit 1
+}
+
 Write-Status "Configuring scheduled task for auto-start" "Info"
 Write-Status "Task name: $taskName" "Info"
 Write-Status "Watcher script: $watcherScript" "Info"
+Write-Status "Profile path: $profilePath" "Info"
 
 try {
     # Check if task already exists
@@ -61,7 +70,7 @@ try {
     # Create the task action (WindowStyle Hidden so no console appears at logon)
     $action = New-ScheduledTaskAction `
         -Execute "powershell.exe" `
-        -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$watcherScript`" -CheckIntervalSeconds 5"
+        -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$watcherScript`" -CheckIntervalSeconds 5 -ProfilePath `"$profilePath`""
     
     # Create task settings (compatible across ScheduledTasks module variants)
     try {
@@ -80,14 +89,14 @@ try {
     }
     
     # Register the task
-    $task = Register-ScheduledTask `
+    Register-ScheduledTask `
         -TaskName $taskName `
         -Trigger $trigger `
         -Action $action `
         -Settings $settings `
         -Description $taskDescription `
         -RunLevel Highest `
-        -Force
+        -Force | Out-Null
     
     Write-Status "Task registered successfully!" "Success"
     

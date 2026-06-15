@@ -1,6 +1,10 @@
 [CmdletBinding()]
 param(
     [switch]$ModelOnly,
+    [string]$HfRepo,
+    [string]$HfFile,
+    [string]$Profile,
+    [string]$ProfileName,
     [switch]$Small,
     [switch]$Tiny
 )
@@ -10,16 +14,14 @@ $ErrorActionPreference = 'Stop'
 
 class DeploymentPaths {
     [string]$LlamaCppDirectory
-    [string]$ModelDirectory
     [string]$LlamaZipPath
     [string]$ModelPath
     [string]$LauncherPath
 
-    DeploymentPaths([string]$llamaCppDirectory, [string]$modelDirectory, [string]$modelFileName, [string]$launcherFileName) {
+    DeploymentPaths([string]$llamaCppDirectory, [string]$modelPath, [string]$launcherFileName) {
         $this.LlamaCppDirectory = $llamaCppDirectory
-        $this.ModelDirectory = $modelDirectory
         $this.LlamaZipPath = Join-Path $llamaCppDirectory 'llama-win.zip'
-        $this.ModelPath = Join-Path $modelDirectory $modelFileName
+        $this.ModelPath = $modelPath
         $this.LauncherPath = Join-Path ([Environment]::GetFolderPath('UserProfile')) ("Desktop\" + $launcherFileName)
     }
 }
@@ -36,28 +38,88 @@ class DownloadResult {
     }
 }
 
-if ($Tiny) {
+class ModelProfile {
+    [string]$Name
+    [string]$HfRepo
+    [string]$HfFile
+    [string]$ModelPath
+    [int]$CtxSize
+    [int]$GpuLayers
+    [int]$Threads
+    [string]$Notes
+
+    ModelProfile([string]$name, [string]$hfRepo, [string]$hfFile, [string]$modelPath, [int]$ctxSize, [int]$gpuLayers, [int]$threads, [string]$notes) {
+        $this.Name = $name
+        $this.HfRepo = $hfRepo
+        $this.HfFile = $hfFile
+        $this.ModelPath = $modelPath
+        $this.CtxSize = $ctxSize
+        $this.GpuLayers = $gpuLayers
+        $this.Threads = $threads
+        $this.Notes = $notes
+    }
+}
+
+# Load profile if specified
+$ProfileObj = $null
+if ($Profile) {
+    $profilePath = Join-Path $PSScriptRoot "models\$Profile.json"
+    if (-not (Test-Path $profilePath)) {
+        throw "Profile file not found: $profilePath"
+    }
+    $profileJson = Get-Content $profilePath -Raw | ConvertFrom-Json
+    $ProfileObj = [ModelProfile]::new(
+        $profileJson.name,
+        $profileJson.hf_repo,
+        $profileJson.hf_file,
+        $profileJson.model_path,
+        $profileJson.ctx_size,
+        $profileJson.gpu_layers,
+        $profileJson.threads,
+        $profileJson.notes
+    )
+}
+
+# Determine model configuration
+if ($ProfileObj) {
+    $ModelRepository = $ProfileObj.HfRepo
+    $ModelFileName = $ProfileObj.HfFile
+    $ModelPath = $ProfileObj.ModelPath
+    $DefaultCtxSize = $ProfileObj.CtxSize
+    $DefaultGpuLayers = $ProfileObj.GpuLayers
+    $DefaultThreads = $ProfileObj.Threads
+    $ProfileDisplayName = $ProfileObj.Name
+} elseif ($HfRepo -and $HfFile) {
+    $ModelRepository = $HfRepo
+    $ModelFileName = $HfFile
+    $ModelPath = Join-Path 'C:\AI_Models' $ModelFileName
+    $ProfileDisplayName = if ($ProfileName) { $ProfileName } else { [System.IO.Path]::GetFileNameWithoutExtension($ModelFileName) }
+    # Auto-detect safe runtime defaults from file size (will be applied after download)
+    $DefaultCtxSize = 3072
+    $DefaultGpuLayers = 16
+    $DefaultThreads = 6
+} elseif ($Tiny) {
     $ModelRepository = 'Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF'
     $ModelFileName = 'qwen2.5-coder-0.5b-instruct-q2_k.gguf'
-    $LauncherFileName = 'Start-AI-Server-0.5B.bat'
+    $ModelPath = 'C:\AI_Models\qwen2.5-coder-0.5b-instruct-q2_k.gguf'
+    $ProfileDisplayName = 'Qwen2.5-Coder-0.5B'
     $DefaultCtxSize = 2048
     $DefaultGpuLayers = 8
     $DefaultThreads = 4
 } else {
     $ModelRepository = 'Qwen/Qwen2.5-Coder-3B-Instruct-GGUF'
     $ModelFileName = 'qwen2.5-coder-3b-instruct-q4_k_m.gguf'
-    $LauncherFileName = if ($Small) { 'Start-AI-Server-3B.bat' } else { 'Start-AI-Server.bat' }
+    $ModelPath = 'C:\AI_Models\qwen2.5-coder-3b-instruct-q4_k_m.gguf'
+    $ProfileDisplayName = 'Qwen2.5-Coder-3B'
     $DefaultCtxSize = 3072
     $DefaultGpuLayers = 16
     $DefaultThreads = 6
 }
 
-$Paths = [DeploymentPaths]::new(
-    'C:\llama_cpp',
-    'C:\AI_Models',
-    $ModelFileName,
-    $LauncherFileName
-)
+$launcherSlug = ($ProfileDisplayName.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
+$LauncherFileName = if ($ProfileObj -or ($HfRepo -and $HfFile)) { "Start-AI-Server-$launcherSlug.bat" } elseif ($Small) { 'Start-AI-Server-3B.bat' } elseif ($Tiny) { 'Start-AI-Server-0.5B.bat' } else { 'Start-AI-Server.bat' }
+
+$Paths = [DeploymentPaths]::new('C:\llama_cpp', $ModelPath, $LauncherFileName)
 
 $HuggingFaceModelApiUrl = "https://huggingface.co/api/models/$ModelRepository"
 $LlamaReleaseApiUrl = 'https://api.github.com/repos/ggml-org/llama.cpp/releases/latest'
@@ -580,7 +642,144 @@ function Initialize-Deployment {
     param()
 
     New-RequiredDirectory -Path $Paths.LlamaCppDirectory
-    New-RequiredDirectory -Path $Paths.ModelDirectory
+    New-RequiredDirectory -Path (Split-Path -Path $Paths.ModelPath -Parent)
+    New-RequiredDirectory -Path (Join-Path $PSScriptRoot 'models')
+}
+
+function Get-SafeRuntimeDefaults {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ModelPath
+    )
+
+    $sizeGB = (Get-Item -Path $ModelPath).Length / 1GB
+
+    if ($sizeGB -lt 0.8) {
+        return @{ Ctx = 2048; Ngl = 8; Threads = 4 }
+    }
+
+    if ($sizeGB -lt 2.0) {
+        return @{ Ctx = 2048; Ngl = 12; Threads = 5 }
+    }
+
+    if ($sizeGB -lt 4.0) {
+        return @{ Ctx = 3072; Ngl = 16; Threads = 6 }
+    }
+
+    if ($sizeGB -lt 7.0) {
+        return @{ Ctx = 2048; Ngl = 10; Threads = 6 }
+    }
+
+    return @{ Ctx = 1024; Ngl = 6; Threads = 4 }
+}
+
+function Convert-ToSlug {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Text
+    )
+
+    return ($Text.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
+}
+
+function Save-ModelProfile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Repository,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$FileName,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ResolvedModelPath,
+
+        [Parameter(Mandatory)]
+        [ValidateRange(256, 32768)]
+        [int]$CtxSize,
+
+        [Parameter(Mandatory)]
+        [ValidateRange(0, 200)]
+        [int]$GpuLayers,
+
+        [Parameter(Mandatory)]
+        [ValidateRange(1, 128)]
+        [int]$Threads
+    )
+
+    $slug = Convert-ToSlug -Text $Name
+    $profilePath = Join-Path $PSScriptRoot ("models\$slug.json")
+    $profileObj = [ordered]@{
+        name       = $Name
+        hf_repo    = $Repository
+        hf_file    = $FileName
+        model_path = $ResolvedModelPath
+        ctx_size   = $CtxSize
+        gpu_layers = $GpuLayers
+        threads    = $Threads
+        notes      = 'Auto-generated profile from installer.'
+    }
+
+    $profileObj | ConvertTo-Json -Depth 4 | Set-Content -Path $profilePath -Encoding ASCII
+    return $profilePath
+}
+
+function New-ModelAgentFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProfileName,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ModelFileName
+    )
+
+    $slug = Convert-ToSlug -Text $ProfileName
+    $agentName = "llama-$slug"
+    $agentFileName = "$agentName.agent.md"
+    $workspaceAgentDir = Join-Path $PSScriptRoot '.github\agents'
+    $workspaceAgentPath = Join-Path $workspaceAgentDir $agentFileName
+    $userAgentDir = Join-Path $env:APPDATA 'Code\User\prompts\agents'
+    $userAgentPath = Join-Path $userAgentDir $agentFileName
+
+    New-RequiredDirectory -Path $workspaceAgentDir
+    New-RequiredDirectory -Path $userAgentDir
+
+    $content = @"
+---
+name: $agentName
+description: Local llama.cpp profile for $ProfileName.
+argument-hint: Describe the model issue or llama.cpp setup you want to troubleshoot.
+user-invocable: true
+tools: [execute, read, search, edit]
+---
+You are a local llama.cpp specialist for profile '$ProfileName'.
+
+Primary model file:
+- $ModelFileName
+
+Endpoints expected by llama-vscode:
+- tools: http://localhost:8009
+- chat: http://localhost:8011
+- completion: http://localhost:8012
+"@
+
+    Set-Content -Path $workspaceAgentPath -Value $content -Encoding ASCII
+    Copy-Item -Path $workspaceAgentPath -Destination $userAgentPath -Force
+    return $workspaceAgentPath
 }
 
 function Get-DeploymentDownloadUrls {
@@ -660,7 +859,7 @@ function Install-ModelFile {
         [string]$DownloadUrl
     )
 
-    $modelLabel = if ($Tiny) { 'Qwen 2.5 Coder 0.5B (tiny)' } else { 'Qwen 2.5 Coder 3B' }
+    $modelLabel = $ProfileDisplayName
     Write-Info "Downloading $modelLabel GGUF directly from Hugging Face..."
 
     $modelTotalBytes = Get-RemoteFileSizeBytes -Uri $DownloadUrl
@@ -684,6 +883,34 @@ function New-DeploymentLauncher {
     New-LauncherScript -Path $Paths.LauncherPath -WorkingDirectory $Paths.LlamaCppDirectory -ModelFile $Paths.ModelPath -DefaultCtxSize $DefaultCtxSize -DefaultGpuLayers $DefaultGpuLayers -DefaultThreads $DefaultThreads
 }
 
+function Resolve-RuntimeDefaults {
+    [CmdletBinding()]
+    param()
+
+    if ($ProfileObj -or $Tiny -or $Small -or (-not ($HfRepo -and $HfFile))) {
+        return
+    }
+
+    $safeDefaults = Get-SafeRuntimeDefaults -ModelPath $Paths.ModelPath
+    $script:DefaultCtxSize = [int]$safeDefaults.Ctx
+    $script:DefaultGpuLayers = [int]$safeDefaults.Ngl
+    $script:DefaultThreads = [int]$safeDefaults.Threads
+    Write-Info "Auto-safe defaults selected from file size: ctx=$DefaultCtxSize ngl=$DefaultGpuLayers threads=$DefaultThreads"
+}
+
+function Finalize-GeneralizedArtifacts {
+    [CmdletBinding()]
+    param()
+
+    $savedProfilePath = Save-ModelProfile -Name $ProfileDisplayName -Repository $ModelRepository -FileName $ModelFileName -ResolvedModelPath $Paths.ModelPath -CtxSize $DefaultCtxSize -GpuLayers $DefaultGpuLayers -Threads $DefaultThreads
+    Write-Success "Model profile saved: $savedProfilePath"
+
+    if ($HfRepo -and $HfFile) {
+        $agentPath = New-ModelAgentFile -ProfileName $ProfileDisplayName -ModelFileName $ModelFileName
+        Write-Success "Model-specific agent generated: $agentPath"
+    }
+}
+
 function Main {
     [CmdletBinding()]
     param()
@@ -696,7 +923,9 @@ function Main {
         Write-Info 'Skipping llama.cpp binary download (-ModelOnly flag set).'
     }
     Install-ModelFile -DownloadUrl $downloadUrls.Model
+    Resolve-RuntimeDefaults
     New-DeploymentLauncher
+    Finalize-GeneralizedArtifacts
     Write-Success 'SUCCESS! Your local AI environment is fully deployed.'
     Write-Success "Desktop launcher created at: $($Paths.LauncherPath)"
 }
