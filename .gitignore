@@ -75,3 +75,4 @@ coverage/
 *.swo
 *~ 
 
+/private_prompts/** 
