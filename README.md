@@ -189,6 +189,45 @@ cd .\scripts
 .\Find-HuggingFaceGGUF.ps1 -Query "mistral" -Repository "TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
 ```
 
+## Add Any GGUF Model in 3 Commands
+
+You can onboard any Hugging Face GGUF model without editing scripts or JSON by hand:
+
+**Step 1 — Discover the model and exact filename**
+
+```powershell
+.\scripts\Find-HuggingFaceGGUF.ps1 -Query "mistral 7b instruct" -Author "TheBloke"
+# or list files for a known repo:
+.\scripts\Find-HuggingFaceGGUF.ps1 -Query "mistral" -Repository "TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
+```
+
+**Step 2 — Install the model**
+
+```powershell
+.\installing_ggufs_hf.ps1 `
+    -HfRepo "TheBloke/Mistral-7B-Instruct-v0.2-GGUF" `
+    -HfFile "mistral-7b-instruct-v0.2.Q4_K_M.gguf" `
+    -ProfileName "mistral-7b"
+```
+
+This downloads the GGUF, selects safe runtime defaults based on file size, saves a reusable profile to `models/mistral-7b.json`, generates a launcher, and auto-configures llama-vscode settings.
+
+> **Warning:** Models larger than 7 GB have ultra-conservative defaults applied automatically (ctx=1024, ngl=6, threads=4). They may cause instability on laptop hardware. Prefer quantizations under 7 GB.
+
+**Step 3 — Launch**
+
+```powershell
+.\Start-AI-Server.bat -Profile mistral-7b
+```
+
+All three llama-vscode endpoints start immediately:
+
+```text
+tools      -> http://localhost:8009
+chat       -> http://localhost:8011
+completion -> http://localhost:8012
+```
+
 ## Profile Schema and Validation Gate
 
 Profile files are validated before use.

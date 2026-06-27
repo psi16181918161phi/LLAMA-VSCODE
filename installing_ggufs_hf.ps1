@@ -672,6 +672,10 @@ function Get-SafeRuntimeDefaults {
         return @{ Ctx = 2048; Ngl = 10; Threads = 6 }
     }
 
+    Write-Warning ("Model file is {0:F2} GB, which exceeds 7 GB. " +
+        "Ultra-conservative defaults (ctx=1024, ngl=6, threads=4) have been applied. " +
+        "Models this large may cause memory pressure, slow inference, or instability on laptop hardware. " +
+        "Consider using a smaller quantization (Q2_K or Q3_K_M) or a model under 7 GB.") -f $sizeGB
     return @{ Ctx = 1024; Ngl = 6; Threads = 4 }
 }
 
