@@ -4,6 +4,11 @@
 
 This guide configures the llama-cpp server stack to automatically start when VS Code launches and stop when all VS Code instances close. This eliminates the need for manual server management and enables seamless inline chat features with local `llama-local` and `llama-vscode` models.
 
+> **CPU/thermal note:** Auto-start keeps `llama-server.exe` processes resident and
+> repeatedly health-checked, which is real, continuous CPU load (and heat/fan noise)
+> for as long as the machine is logged in - not just while VS Code is open. If you
+> don't need local inference running constantly, see **Turning It Off / On** below.
+
 ## Features
 
 - ✓ **Auto-Start**: Servers launch when VS Code opens
@@ -13,6 +18,30 @@ This guide configures the llama-cpp server stack to automatically start when VS 
 - ✓ **Agent Discovery**: Enables llama-local and llama-vscode in agent picker
 - ✓ **Inline Chat**: Model/agent selection works in inline chat
 - ✓ **Zero Configuration**: Just run and forget
+
+## Turning It Off / On
+
+**Stop it right now (kill switch, no admin required):**
+```batch
+.\Stop-AI-Server.bat
+```
+or
+```powershell
+.\scripts\Stop-LlamaServers.ps1
+```
+This immediately kills any running `llama-server.exe` and watcher processes. It does
+**not** touch the scheduled task, so servers will still relaunch at your next login
+if the task is registered.
+
+**Permanently disable auto-start (survives reboot/logon), requires admin PowerShell:**
+```powershell
+.\scripts\Register-LlamaServerTask.ps1 -Uninstall
+```
+
+**Re-enable auto-start later, requires admin PowerShell:**
+```powershell
+.\scripts\Register-LlamaServerTask.ps1 -Profile qwen2.5-3b
+```
 
 ## Quick Start
 
@@ -42,6 +71,7 @@ cd c:\Users\lordx\Desktop\LLAMA-VSCODE
    ```
 
 ### Option 2: Windows Task Scheduler (Production)
+
 
 For automatic startup with Windows login:
 
@@ -200,9 +230,11 @@ LLAMA-VSCODE/
 │   ├── qwen2.5-3b.json                       ← Starter profile
 │   └── qwen2.5-0.5b.json                     ← Starter profile
 ├── Start-AI-Server-AutoWatcher.bat          ← Start watcher manually
+├── Stop-AI-Server.bat                       ← Kill switch: stop servers now
 ├── scripts/
 │   ├── Start-LlamaServerWatcher.ps1         ← Core watcher logic
-│   ├── Register-LlamaServerTask.ps1         ← Register Windows task
+│   ├── Stop-LlamaServers.ps1                ← Kill switch: stop servers now
+│   ├── Register-LlamaServerTask.ps1         ← Register/uninstall Windows task
 │   ├── Validate-ModelProfile.ps1            ← Profile validation gate
 │   ├── Validate-InlineChatFeatures.ps1      ← Validation script
 │   └── Configure-LlamaVscode.ps1            ← Settings bootstrap
